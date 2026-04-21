@@ -140,6 +140,5 @@ int tree_from_index(ObjectID *id_out) {
         fprintf(stderr, "error: no files staged\n");
         return -1;
     }
-    (void)id_out;
-    return -1;
+  return build_tree_recursive(index.entries, index.count, "", id_out);
 }
