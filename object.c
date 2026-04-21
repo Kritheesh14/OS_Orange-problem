@@ -126,28 +126,6 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
     free(full);
     return 0;
 }
-// Read an object from the store.
-//
-// Steps:
-//   1. Build the file path from the hash using object_path()
-//   2. Open and read the entire file
-//   3. Parse the header to extract the type string and size
-//   4. Verify integrity: recompute the SHA-256 of the file contents
-//      and compare to the expected hash (from *id). Return -1 if mismatch.
-//   5. Set *type_out to the parsed ObjectType
-//   6. Allocate a buffer, copy the data portion (after the \0), set *data_out and *len_out
-//
-// HINTS - Useful syscalls and functions for this phase:
-//   - object_path        : getting the target file path
-//   - fopen, fread, fseek: reading the file into memory
-//   - memchr             : safely finding the '\0' separating header and data
-//   - strncmp            : parsing the type string ("blob", "tree", "commit")
-//   - compute_hash       : re-hashing the read data for integrity verification
-//   - memcmp             : comparing the computed hash against the requested hash
-//   - malloc, memcpy     : allocating and returning the extracted data
-//
-// The caller is responsible for calling free(*data_out).
-// Returns 0 on success, -1 on error (file not found, corrupt, etc.).
 int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_t *len_out) {
     char path[512];
     object_path(id, path, sizeof(path));
