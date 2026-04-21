@@ -160,7 +160,86 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
 // The caller is responsible for calling free(*data_out).
 // Returns 0 on success, -1 on error (file not found, corrupt, etc.).
 int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_t *len_out) {
-    // TODO: Implement
-    (void)id; (void)type_out; (void)data_out; (void)len_out;
-    return -1;
-}
+    char path[512];
+    object_path(id, path, sizeof(path));
+
+    FILE *f = fopen(path, "rb");
+    if (!f) return -1;
+
+    // get file size
+    if (fseek(f, 0, SEEK_END) != 0) {
+        fclose(f);
+        return -1;
+    }
+    long size = ftell(f);
+    if (size < 0) {
+        fclose(f);
+        return -1;
+    }
+    rewind(f);
+
+    uint8_t *buf = malloc(size);
+    if (!buf) {
+        fclose(f);
+        return -1;
+    }
+
+    if (fread(buf, 1, size, f) != (size_t)size) {
+        free(buf);
+        fclose(f);
+        return -1;
+    }
+    fclose(f);
+
+    // verify hash
+    ObjectID computed;
+    compute_hash(buf, size, &computed);
+    if (memcmp(computed.hash, id->hash, HASH_SIZE) != 0) {
+        free(buf);
+        return -1;
+    }
+
+    // parse header: "<type> <size>\0"
+    uint8_t *nullb = memchr(buf, '\0', size);
+    if (!nullb) {
+        free(buf);
+        return -1;
+    }
+
+    size_t header_len = (nullb - buf) + 1;
+
+    char type_str[16];
+    size_t obj_size;
+
+    if (sscanf((char *)buf, "%15s %zu", type_str, &obj_size) != 2) {
+        free(buf);
+        return -1;
+    }
+
+    if (strcmp(type_str, "blob") == 0) *type_out = OBJ_BLOB;
+    else if (strcmp(type_str, "tree") == 0) *type_out = OBJ_TREE;
+    else if (strcmp(type_str, "commit") == 0) *type_out = OBJ_COMMIT;
+    else {
+        free(buf);
+        return -1;
+    }
+
+    if (header_len + obj_size > (size_t)size) {
+        free(buf);
+        return -1;
+    }
+
+    void *data = malloc(obj_size);
+    if (!data) {
+        free(buf);
+        return -1;
+    }
+
+    memcpy(data, buf + header_len, obj_size);
+
+    *data_out = data;
+    *len_out = obj_size;
+
+    free(buf);
+    return 0;
+}}
