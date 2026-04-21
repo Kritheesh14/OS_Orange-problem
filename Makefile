@@ -10,7 +10,7 @@ OBJS = $(SRCS:.c=.o)
 pes: $(OBJS)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-%.o: %.c
+%.o: %.c pes.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # ─── Test binaries ───────────────────────────────────────────────────────────
@@ -18,8 +18,7 @@ pes: $(OBJS)
 test_objects: test_objects.o object.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-# Added index.o here to fix the "undefined reference to index_load" error
-test_tree: test_tree.o object.o tree.o index.o
+test_tree: test_tree.o object.o tree.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 # ─── Convenience targets ────────────────────────────────────────────────────
